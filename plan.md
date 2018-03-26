@@ -68,3 +68,6 @@ CSS 스터디 - Draft plan
 		http://qss.princeton.press/student-resources-for-quantitative-social-science/
 
 	* ??
+	
+	practice
+	
