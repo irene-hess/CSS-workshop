@@ -1,0 +1,85 @@
+install.packages("rJava")
+Sys.setenv("JAVA_HOME" = 'C://Program Files//Java//jdk-10.0.1')
+library(rJava)
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+library(tm)
+
+install.packages("KoNLP")
+install.packages("wordcloud")
+install.packages("RColorBrewer")
+library("KoNLP")
+library("wordcloud") #단어구름(시각화)
+library("RColorBrewer")
+
+setwd("C:/Users/HYESU/Desktop/health")
+text <- readLines("20_356_1_future.txt")
+
+## 
+useNIADic() # 형태소 사전 (SejongDic)
+text <- text[!is.na(text)]
+
+## 형태소를 분석해주는 함수
+pos <- SimplePos22(text) #simplepos22 22개의 품사 태그를 달아주는 함수
+posv = paste(pos) #리스트를 벡터로 변환 
+library(stringr)
+Done = str_match(posv, 'N')
+
+## Term Document Matrix
+corp = Corpus(VectorSource(text))
+corp
+inspect(corp)
+tdm <- TermDocumentMatrix(corp)
+tdm <- TermDocumentMatrix(corp, control = list(removeNumbers = T, removePunctuation = T, stopwords = T))
+tdm
+
+m = as.matrix(tdm)
+findAssocs(tdm, "인터넷", 0.5) # 인터넷과 상관이 0.5 이상인 단어 검색 -> 결과: 공공재 0.58, 기업이라든지 0.58, 말하자면 0.58
+
+## 빈출 단어 추리기
+library(slam)
+word.count = as.array(rollup(tdm, 2)) # 매트릭스 행별 합계 
+word.order = order(word.count, decreasing = T)[1:1000] #많이 쓰인 단어 순서 정리
+freq.word = word.order[1:1000] # 상위 1000개 단어 재할당 
+row.names(tdm[freq.word,]) # 해당 단어 번호 확인 
+
+## DTM
+dtm = as.DocumentTermMatrix(tdm[freq.word, ])
+dtm
+
+## DTM을 LDA 형식 데이터로 전환
+ldaform = dtm2ldaformat(dtm, omit_empty = T)
+
+## LDA 분석
+install.packages("lda")
+library(lda)
+result.lda = lda.collapsed.gibbs.sampler(documents = ldaform$documents,
+                                         K = 30, 
+                                         vocab = ldaform$vocab,
+                                         num.iterations = 5000, 
+                                         burnin = 1000,
+                                         alpha = 0.01,
+                                         eta = 0.01)
+attributes(result.lda)
+dim(result.lda$topics) # 30개 토픽, 1000개 단어 
+top.topic.words(result.lda$topics)
+result.lda$topic_sum # 전체 토픽 중 가장 많이 나온 단어
+
+
+## TF-IDF 여러 문서군?? 
+
+
+## Visualization
+library(wordcloud)
+m <- as.matrix(tdm)
+wordFreq <- sort(rowSums(m), decreasing = TRUE)
+set.seed(500)
+pal <- brewer.pal(8, "Dark2")
+wordcloud(words = names(wordFreq), freq = wordFreq, min.freq = 10, random.order = F, 
+          rot.per = 0.1, colors = pal)
+
+
+## word2vec
+
+
